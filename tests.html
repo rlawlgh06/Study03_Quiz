@@ -129,7 +129,14 @@ test("정상 문항만 있으면 통과한다", () => {
 });
 
 test("requireTen 이 true 면 10개가 아닌 카테고리를 잡아낸다", () => {
-  assertEqual(validateQuestions(QUESTIONS, true).length > 0, true);
+  // 실제 문항은 40개를 채웠으므로, 모자란 데이터를 따로 만들어 검사한다.
+  const 아홉개 = 집합(Array.from({ length: 9 }, () => 정상문항()));
+  assertEqual(validateQuestions(아홉개, true).length > 0, true);
+  assertDeepEqual(validateQuestions(아홉개, false), []);
+});
+
+test("requireTen 이 true 면 10개를 채운 데이터는 통과한다", () => {
+  assertDeepEqual(validateQuestions(QUESTIONS, true), []);
 });
 
 // ── Task 1.2: 섞기와 라운드 ─────────────────────────────

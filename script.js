@@ -507,8 +507,7 @@ function onKeyDown(e) {
 function init() {
   if (!document.getElementById("quiz-root")) return; // tests.html
 
-  // 1단계는 씨드 문항이라 "카테고리마다 10개" 검사를 끈다.
-  const problems = validateQuestions(QUESTIONS, false);
+  const problems = validateQuestions(QUESTIONS, true);
   if (problems.length > 0) {
     showValidationErrors(problems);
     return;

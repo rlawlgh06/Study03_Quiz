@@ -183,6 +183,52 @@ test("힌트 쓰고 맞히면 0.5점", () => assertEqual(scoreAnswer(true,  true
 test("힌트 없이 틀리면 0점",   () => assertEqual(scoreAnswer(false, false), 0));
 test("힌트 쓰고 틀려도 0점",   () => assertEqual(scoreAnswer(false, true),  0));
 
+// ── Task 1.4: 연습 모드 한 판 ───────────────────────────
+// DOM 이 없는 문서라 render() 는 그냥 돌아 나간다. 상태만 검사한다.
+
+test("해설이 뜬 뒤 다시 고르면 점수가 두 번 더해지지 않는다", () => {
+  startRound("korean_history", "practice");
+  const 정답 = state.round.items[0].answer;
+  selectChoice(정답);
+  selectChoice(정답);
+  assertEqual(state.score, 1);
+});
+
+test("문항이 10개가 아니어도 만점이 문항 수를 따른다", () => {
+  startRound("korean_history", "practice");
+  assertEqual(state.round.items.length, QUESTIONS.korean_history.items.length);
+});
+
+test("틀리면 점수가 오르지 않고 틀린 문항으로 쌓인다", () => {
+  startRound("science", "practice");
+  const 문항 = state.round.items[0];
+  selectChoice((문항.answer + 1) % 4);
+  assertEqual(state.score, 0);
+  assertEqual(state.wrong.length, 1);
+  assertEqual(state.wrong[0].q, 문항.q);
+});
+
+test("답을 고르기 전에는 해설이 뜨지 않는다", () => {
+  startRound("science", "practice");
+  assertEqual(state.answered, false);
+});
+
+test("마지막 문항을 넘기면 라운드가 끝난다", () => {
+  startRound("arts_culture", "practice");
+  while (!state.finished) {
+    selectChoice(state.round.items[state.index].answer);
+    nextQuestion();
+  }
+  assertEqual(state.finished, true);
+  assertEqual(state.score, QUESTIONS.arts_culture.items.length);
+});
+
+test("해설 전에는 다음으로 넘어가지 않는다", () => {
+  startRound("world_geography", "practice");
+  nextQuestion();
+  assertEqual(state.index, 0);
+});
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

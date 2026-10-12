@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>상식 퀴즈</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main id="quiz-root">
+
+  <!-- 시작 -->
+  <section id="screen-start">
+    <h1>상식 퀴즈</h1>
+
+    <div id="validation-errors" class="hidden">
+      <h2>문항 데이터에 문제가 있습니다</h2>
+      <ul id="validation-list"></ul>
+      <p class="muted">고치기 전까지 퀴즈를 시작할 수 없습니다.</p>
+    </div>
+
+    <div id="start-body">
+      <p id="mode-notice" class="notice">순위표에 기록되지 않음</p>
+      <h2>카테고리</h2>
+      <div id="category-buttons" class="buttons"></div>
+    </div>
+  </section>
+
+  <!-- 문제와 해설 -->
+  <section id="screen-quiz" class="hidden">
+    <header class="bar">
+      <span id="progress"></span>
+      <span id="score"></span>
+    </header>
+
+    <h2 id="question"></h2>
+    <ol id="choices" class="choices"></ol>
+
+    <div id="explanation" class="hidden">
+      <p id="verdict"></p>
+      <p id="explanation-text"></p>
+      <p id="source" class="muted"></p>
+      <button id="next" type="button">다음</button>
+    </div>
+
+    <p class="muted hint-keys">숫자키 1~4 로 고르고, Enter 로 다음</p>
+  </section>
+
+  <!-- 결과 -->
+  <section id="screen-result" class="hidden">
+    <h2>결과</h2>
+    <p id="final-score" class="big"></p>
+    <p id="result-notice" class="notice">순위표에 기록되지 않음</p>
+
+    <div id="wrong-block" class="hidden">
+      <h3>틀린 문항</h3>
+      <ul id="wrong-list"></ul>
+    </div>
+
+    <div class="buttons">
+      <button id="restart" type="button">처음으로</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="questions.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

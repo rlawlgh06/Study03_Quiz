@@ -1,0 +1,113 @@
+:root {
+  --bg: #fbfbfa;
+  --fg: #1d1c1a;
+  --muted: #6b6760;
+  --line: #ddd9d2;
+  --card: #fff;
+  --accent: #2f5fd0;
+  --correct: #0a7d2b;
+  --wrong: #c0271a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181a;
+    --fg: #e9e7e3;
+    --muted: #9b968e;
+    --line: #34363a;
+    --card: #202225;
+    --accent: #7aa2f7;
+    --correct: #4ac26b;
+    --wrong: #f07167;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2rem 1rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 system-ui, "Malgun Gothic", sans-serif;
+}
+
+#quiz-root {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+h1 { font-size: 1.7rem; margin: 0 0 1.5rem; }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1rem; }
+
+.hidden { display: none; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+.big { font-size: 1.6rem; font-weight: 600; }
+
+.notice {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.bar {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+button {
+  font: inherit;
+  padding: 0.6rem 1.1rem;
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+
+/* 보기 */
+.choices { list-style: none; margin: 1.2rem 0; padding: 0; }
+.choices li { margin-bottom: 0.6rem; }
+
+.choice {
+  display: flex;
+  gap: 0.7rem;
+  width: 100%;
+  text-align: left;
+  align-items: baseline;
+}
+
+.choice .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* 정답·오답은 색만으로 구분하지 않는다. mark 에 기호가 들어간다. */
+.choice .mark { margin-left: auto; font-weight: 700; }
+.choice.correct { border-color: var(--correct); color: var(--correct); }
+.choice.wrong   { border-color: var(--wrong);   color: var(--wrong); }
+
+#verdict { font-weight: 600; margin-bottom: 0.3rem; }
+#explanation { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+
+#validation-errors {
+  border: 1px solid var(--wrong);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+}
+#validation-errors h2 { margin-top: 0; color: var(--wrong); }
+#validation-list { font-size: 0.9rem; }
+
+#wrong-list li { margin-bottom: 0.4rem; }
+.hint-keys { margin-top: 2rem; }

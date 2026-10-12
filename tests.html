@@ -643,6 +643,38 @@ test("재도전 라운드는 힌트 기록을 물려받지 않는다", () => {
   assertEqual(state.hintedCorrect.length, 0);
 });
 
+// ── 재도전 중 상단 표시 ─────────────────────────────────
+test("보통 판은 상단에 점수를 띄운다", () => {
+  assertEqual(headerScoreText(false, 8.5, 9, 10), "8.5 / 10");
+  assertEqual(headerScoreText(false, 7, 7, 10), "7 / 10");
+});
+
+test("재도전 중에는 점수가 아니라 맞힌 개수를 띄운다", () => {
+  assertEqual(headerScoreText(true, 0, 1, 3), "1 / 3 맞힘");
+  assertEqual(headerScoreText(true, 0, 0, 3), "0 / 3 맞힘");
+});
+
+test("맞힌 개수는 푼 문항에서 틀린 것을 뺀 수다", () => {
+  startRound("korean_history", "practice");
+  assertEqual(correctCount(), 0, "아직 아무것도 안 풀었다");
+  selectChoice(currentItem().answer);
+  assertEqual(correctCount(), 1, "해설이 떠 있어도 이미 센다");
+  nextQuestion();
+  selectChoice((currentItem().answer + 1) % 4);
+  assertEqual(correctCount(), 1, "틀린 것은 세지 않는다");
+  nextQuestion();
+  assertEqual(correctCount(), 1);
+});
+
+test("재도전 중 상단 표시가 맞힌 개수로 바뀐다", () => {
+  첫문항만틀리고끝내기("korean_history", "practice");
+  startRetry();
+  const total = state.round.items.length;
+  assertEqual(headerScoreText(state.isRetry, state.score, correctCount(), total), `0 / ${total} 맞힘`);
+  selectChoice(currentItem().answer);
+  assertEqual(headerScoreText(state.isRetry, state.score, correctCount(), total), `1 / ${total} 맞힘`);
+});
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

@@ -371,6 +371,24 @@ function formatScore(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
+/**
+ * 상단에 띄울 글. 재도전은 점수를 매기지 않으므로 맞힌 개수로 보여 준다 —
+ * 원래 판의 점수는 재도전으로 바뀌지 않는다.
+ */
+function headerScoreText(isRetry, score, correct, total) {
+  return isRetry ? `${correct} / ${total} 맞힘` : `${formatScore(score)} / ${total}`;
+}
+
+/** 지금까지 푼 문항 수. 해설이 떠 있으면 그 문항도 센다. */
+function answeredCount() {
+  return state.index + (state.answered ? 1 : 0);
+}
+
+/** 지금까지 맞힌 문항 수. */
+function correctCount() {
+  return answeredCount() - state.wrong.length;
+}
+
 function showScreen(id) {
   for (const s of SCREENS) {
     document.getElementById(s).classList.toggle("hidden", s !== id);
@@ -395,7 +413,8 @@ function renderQuestion() {
   const total = state.round.items.length;
 
   document.getElementById("progress").textContent = `${state.index + 1} / ${total}`;
-  document.getElementById("score").textContent = `${formatScore(state.score)} / ${total}`;
+  document.getElementById("score").textContent =
+    headerScoreText(state.isRetry, state.score, correctCount(), total);
 
   const timer = document.getElementById("timer");
   timer.classList.toggle("hidden", state.mode !== "speed");

@@ -58,3 +58,34 @@ function validateQuestions(questions, requireTen = true) {
 
   return problems;
 }
+
+/** Fisher-Yates. 원본을 건드리지 않고 섞은 복사본을 돌려준다. */
+function shuffle(array, rng = Math.random) {
+  const out = array.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * 한 판에 쓸 라운드를 만든다. 문항 순서와 보기 순서를 모두 섞고,
+ * 보기를 섞은 뒤 정답이 놓인 새 자리로 answer 를 다시 매긴다.
+ */
+function buildRound(categoryKey, questions, rng = Math.random) {
+  const category = questions[categoryKey];
+  const items = shuffle(category.items, rng).map((item) => {
+    const correct = item.choices[item.answer];
+    const choices = shuffle(item.choices, rng);
+    return {
+      q: item.q,
+      choices,
+      answer: choices.indexOf(correct),
+      explanation: item.explanation,
+      source: item.source,
+    };
+  });
+
+  return { category: categoryKey, name: category.name, items };
+}

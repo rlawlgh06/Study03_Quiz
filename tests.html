@@ -132,6 +132,51 @@ test("requireTen 이 true 면 10개가 아닌 카테고리를 잡아낸다", () 
   assertEqual(validateQuestions(QUESTIONS, true).length > 0, true);
 });
 
+// ── Task 1.2: 섞기와 라운드 ─────────────────────────────
+test("shuffle 은 원본을 바꾸지 않는다", () => {
+  const src = [1, 2, 3, 4];
+  shuffle(src, () => 0.5);
+  assertDeepEqual(src, [1, 2, 3, 4]);
+});
+
+test("shuffle 은 원소를 잃지 않는다", () => {
+  assertDeepEqual(shuffle([1, 2, 3, 4], () => 0.5).sort(), [1, 2, 3, 4]);
+});
+
+test("buildRound 는 문항을 잃지 않는다", () => {
+  assertEqual(buildRound("science", QUESTIONS, Math.random).items.length,
+              QUESTIONS.science.items.length);
+});
+
+test("buildRound 는 카테고리 이름을 함께 싣는다", () => {
+  const round = buildRound("korean_history", QUESTIONS, Math.random);
+  assertEqual(round.category, "korean_history");
+  assertEqual(round.name, "한국사");
+});
+
+test("보기를 섞어도 answer 가 같은 보기를 가리킨다", () => {
+  const round = buildRound("korean_history", QUESTIONS, () => 0.5);
+  assertEqual(round.items.length > 0, true, "씨드 문항이 있어야 의미가 있는 검사다");
+  round.items.forEach((item) => {
+    const 원본 = QUESTIONS.korean_history.items.find((o) => o.q === item.q);
+    assertEqual(item.choices[item.answer], 원본.choices[원본.answer]);
+  });
+});
+
+test("보기를 섞어도 보기 집합은 그대로다", () => {
+  const round = buildRound("arts_culture", QUESTIONS, () => 0.5);
+  round.items.forEach((item) => {
+    const 원본 = QUESTIONS.arts_culture.items.find((o) => o.q === item.q);
+    assertDeepEqual(item.choices.slice().sort(), 원본.choices.slice().sort());
+  });
+});
+
+test("buildRound 는 원본 문항을 건드리지 않는다", () => {
+  const 전 = JSON.stringify(QUESTIONS.world_geography.items);
+  buildRound("world_geography", QUESTIONS, () => 0.5);
+  assertEqual(JSON.stringify(QUESTIONS.world_geography.items), 전);
+});
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

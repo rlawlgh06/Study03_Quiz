@@ -78,6 +78,18 @@ function remainingMs(deadline, now) {
   return Math.max(0, deadline - now);
 }
 
+/**
+ * 힌트로 지울 오답 보기 2개를 고른다. 정답은 후보에서 빠지므로 정답 1개와
+ * 오답 1개가 남는다.
+ */
+function pickHintRemovals(choicesLength, answerIndex, rng = Math.random) {
+  const candidates = [];
+  for (let i = 0; i < choicesLength; i++) {
+    if (i !== answerIndex) candidates.push(i);
+  }
+  return shuffle(candidates, rng).slice(0, 2);
+}
+
 /** 연습 모드는 순위표에 남기지 않는다. */
 function recordsToLeaderboard(mode) {
   return mode === "speed" || mode === "hint";
@@ -130,11 +142,30 @@ const state = {
   answered: false,
   hintUsed: false,
   picked: null,
+  removed: [],
   wrong: [],
   finished: false,
   deadline: 0,
   timerId: null,
 };
+
+/**
+ * 힌트로 지워진 보기인가. 해설이 뜨면 전부 되살린다 — 지운 채로 두면
+ * 그 보기가 왜 틀렸는지 확인할 수 없다.
+ */
+function isChoiceRemoved(i) {
+  return !state.answered && state.removed.includes(i);
+}
+
+function useHint() {
+  if (!state.round || state.mode !== "hint") return;
+  if (state.answered || state.finished || state.hintUsed) return;
+
+  const item = currentItem();
+  state.removed = pickHintRemovals(item.choices.length, item.answer);
+  state.hintUsed = true;
+  render();
+}
 
 function currentItem() {
   return state.round.items[state.index];
@@ -191,6 +222,7 @@ function startRound(categoryKey, mode, rng = Math.random) {
   state.answered = false;
   state.hintUsed = false;
   state.picked = null;
+  state.removed = [];
   state.wrong = [];
   state.finished = false;
   beginQuestion();
@@ -222,6 +254,7 @@ function nextQuestion() {
     state.answered = false;
     state.hintUsed = false;
     state.picked = null;
+    state.removed = [];
     beginQuestion(); // 다시 15초부터
   }
   render();
@@ -270,10 +303,13 @@ function renderQuestion() {
   list.textContent = "";
 
   item.choices.forEach((text, i) => {
+    const removed = isChoiceRemoved(i);
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "choice";
-    button.disabled = state.answered;
+    button.classList.toggle("removed", removed);
+    button.disabled = state.answered || removed;
 
     const num = document.createElement("span");
     num.className = "num";
@@ -303,6 +339,9 @@ function renderQuestion() {
     li.append(button);
     list.append(li);
   });
+
+  document.getElementById("hint-row").classList.toggle("hidden", state.mode !== "hint");
+  document.getElementById("hint").disabled = state.hintUsed || state.answered;
 
   const box = document.getElementById("explanation");
   box.classList.toggle("hidden", !state.answered);
@@ -424,6 +463,7 @@ function init() {
   document.getElementById("start").addEventListener("click", () => {
     startRound(selection.category, selection.mode);
   });
+  document.getElementById("hint").addEventListener("click", useHint);
   document.getElementById("next").addEventListener("click", nextQuestion);
   document.getElementById("restart").addEventListener("click", restart);
   document.addEventListener("keydown", onKeyDown);

@@ -286,6 +286,75 @@ test("연습 모드는 타이머를 걸지 않는다", () => {
   assertEqual(state.timerId, null);
 });
 
+// ── Task 2.3: 힌트 ──────────────────────────────────────
+test("제거 대상은 2개다", () => {
+  assertEqual(pickHintRemovals(4, 0, () => 0.5).length, 2);
+});
+
+test("정답은 제거 대상에 들어가지 않는다", () => {
+  for (let answer = 0; answer < 4; answer++) {
+    assertEqual(pickHintRemovals(4, answer, Math.random).includes(answer), false);
+  }
+});
+
+test("제거 대상이 서로 다르다", () => {
+  const [a, b] = pickHintRemovals(4, 2, Math.random);
+  assertEqual(a === b, false);
+});
+
+test("힌트를 쓰고 맞히면 0.5점이다", () => {
+  startRound("science", "hint");
+  useHint();
+  selectChoice(state.round.items[0].answer);
+  assertEqual(state.score, 0.5);
+});
+
+test("힌트를 쓰고 틀리면 0점이다", () => {
+  startRound("science", "hint");
+  const 문항 = state.round.items[0];
+  useHint();
+  selectChoice((문항.answer + 1) % 4);
+  assertEqual(state.score, 0);
+});
+
+test("힌트는 한 문항에 한 번만 먹는다", () => {
+  startRound("science", "hint");
+  useHint();
+  useHint();
+  assertEqual(state.removed.length, 2);
+});
+
+test("힌트를 쓰지 않고 맞히면 힌트 모드라도 1점이다", () => {
+  startRound("science", "hint");
+  selectChoice(state.round.items[0].answer);
+  assertEqual(state.score, 1);
+});
+
+test("힌트는 연습·스피드 모드에서 먹지 않는다", () => {
+  startRound("science", "practice");
+  useHint();
+  assertEqual(state.hintUsed, false);
+  assertEqual(state.removed.length, 0);
+});
+
+test("해설이 뜨면 지웠던 보기도 되살아난다", () => {
+  startRound("science", "hint");
+  useHint();
+  const 지운보기 = state.removed[0];
+  assertEqual(isChoiceRemoved(지운보기), true, "해설 전에는 지워져 있다");
+  selectChoice(state.round.items[0].answer);
+  assertEqual(isChoiceRemoved(지운보기), false, "해설 뒤에는 되살아난다");
+});
+
+test("다음 문항으로 가면 힌트가 초기화된다", () => {
+  startRound("science", "hint");
+  useHint();
+  selectChoice(0);
+  nextQuestion();
+  assertEqual(state.hintUsed, false);
+  assertEqual(state.removed.length, 0);
+});
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

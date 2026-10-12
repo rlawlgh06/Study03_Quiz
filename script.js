@@ -59,6 +59,15 @@ function validateQuestions(questions, requireTen = true) {
   return problems;
 }
 
+/**
+ * 한 문항의 점수. 시간 초과는 isCorrect 가 false 로 들어오므로 따로 받지 않는다.
+ * 모드는 점수를 바꾸지 않는다 — 힌트를 썼는지만 바꾼다.
+ */
+function scoreAnswer(isCorrect, hintUsed) {
+  if (!isCorrect) return 0;
+  return hintUsed ? 0.5 : 1;
+}
+
 /** Fisher-Yates. 원본을 건드리지 않고 섞은 복사본을 돌려준다. */
 function shuffle(array, rng = Math.random) {
   const out = array.slice();

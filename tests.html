@@ -177,6 +177,12 @@ test("buildRound 는 원본 문항을 건드리지 않는다", () => {
   assertEqual(JSON.stringify(QUESTIONS.world_geography.items), 전);
 });
 
+// ── Task 1.3: 채점 ──────────────────────────────────────
+test("힌트 없이 맞히면 1점",   () => assertEqual(scoreAnswer(true,  false), 1));
+test("힌트 쓰고 맞히면 0.5점", () => assertEqual(scoreAnswer(true,  true),  0.5));
+test("힌트 없이 틀리면 0점",   () => assertEqual(scoreAnswer(false, false), 0));
+test("힌트 쓰고 틀려도 0점",   () => assertEqual(scoreAnswer(false, true),  0));
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

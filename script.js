@@ -68,6 +68,16 @@ function scoreAnswer(isCorrect, hintUsed) {
   return hintUsed ? 0.5 : 1;
 }
 
+const SPEED_LIMIT_MS = 15000;
+
+/**
+ * 남은 시간. 틱을 세지 않고 deadline 과 현재 시각의 차로 구하므로, 탭이
+ * 멈춰 있다 돌아와도 어긋나지 않는다. 음수는 0으로 바닥을 친다.
+ */
+function remainingMs(deadline, now) {
+  return Math.max(0, deadline - now);
+}
+
 /** 연습 모드는 순위표에 남기지 않는다. */
 function recordsToLeaderboard(mode) {
   return mode === "speed" || mode === "hint";
@@ -122,13 +132,58 @@ const state = {
   picked: null,
   wrong: [],
   finished: false,
+  deadline: 0,
+  timerId: null,
 };
 
 function currentItem() {
   return state.round.items[state.index];
 }
 
+/** 스피드 모드에서만 시계를 건다. 문항이 바뀔 때마다 부른다. */
+function beginQuestion() {
+  if (state.mode === "speed" && !state.finished) startTimer();
+}
+
+function startTimer() {
+  stopTimer();
+  state.deadline = Date.now() + SPEED_LIMIT_MS;
+  updateTimerDisplay();
+
+  state.timerId = setInterval(() => {
+    updateTimerDisplay();
+    if (remainingMs(state.deadline, Date.now()) === 0) timeUp();
+  }, 100);
+}
+
+function stopTimer() {
+  if (state.timerId !== null) {
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById("timer");
+  if (!el) return; // tests.html
+  el.textContent = `${Math.ceil(remainingMs(state.deadline, Date.now()) / 1000)}초`;
+}
+
+/** 시간이 다 됐다. 오답으로 처리하되 정답이 무엇이었는지는 보여 준다. */
+function timeUp() {
+  if (!state.round || state.answered || state.finished) return;
+  stopTimer();
+
+  state.picked = null;
+  state.answered = true;
+  state.score += scoreAnswer(false, state.hintUsed);
+  state.wrong.push(currentItem());
+
+  render();
+}
+
 function startRound(categoryKey, mode, rng = Math.random) {
+  stopTimer();
   state.mode = mode;
   state.round = buildRound(categoryKey, QUESTIONS, rng);
   state.index = 0;
@@ -138,11 +193,13 @@ function startRound(categoryKey, mode, rng = Math.random) {
   state.picked = null;
   state.wrong = [];
   state.finished = false;
+  beginQuestion();
   render();
 }
 
 function selectChoice(i) {
   if (!state.round || state.answered || state.finished) return; // 이중 채점 방지
+  stopTimer(); // 해설이 뜨는 동안 시계는 멈춘다
   const item = currentItem();
   const isCorrect = i === item.answer;
 
@@ -159,16 +216,19 @@ function nextQuestion() {
 
   if (state.index + 1 >= state.round.items.length) {
     state.finished = true;
+    stopTimer();
   } else {
     state.index++;
     state.answered = false;
     state.hintUsed = false;
     state.picked = null;
+    beginQuestion(); // 다시 15초부터
   }
   render();
 }
 
 function restart() {
+  stopTimer();
   state.round = null;
   render();
 }
@@ -200,6 +260,10 @@ function renderQuestion() {
 
   document.getElementById("progress").textContent = `${state.index + 1} / ${total}`;
   document.getElementById("score").textContent = `${formatScore(state.score)} / ${total}`;
+
+  const timer = document.getElementById("timer");
+  timer.classList.toggle("hidden", state.mode !== "speed");
+  if (state.mode === "speed") updateTimerDisplay();
   document.getElementById("question").textContent = item.q;
 
   const list = document.getElementById("choices");

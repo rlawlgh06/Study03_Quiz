@@ -68,6 +68,11 @@ function scoreAnswer(isCorrect, hintUsed) {
   return hintUsed ? 0.5 : 1;
 }
 
+/** 연습 모드는 순위표에 남기지 않는다. */
+function recordsToLeaderboard(mode) {
+  return mode === "speed" || mode === "hint";
+}
+
 /** Fisher-Yates. 원본을 건드리지 않고 섞은 복사본을 돌려준다. */
 function shuffle(array, rng = Math.random) {
   const out = array.slice();
@@ -182,7 +187,7 @@ function showScreen(id) {
 function render() {
   if (!document.getElementById("quiz-root")) return;
 
-  if (!state.round) { showScreen("screen-start"); return; }
+  if (!state.round) { showScreen("screen-start"); renderStart(); return; }
   if (state.finished) { renderResult(); return; }
   renderQuestion();
 }
@@ -254,6 +259,10 @@ function renderResult() {
   document.getElementById("final-score").textContent =
     `${formatScore(state.score)} / ${total}`;
 
+  document.getElementById("result-notice").classList.toggle(
+    "hidden", recordsToLeaderboard(state.mode)
+  );
+
   const list = document.getElementById("wrong-list");
   list.textContent = "";
   document.getElementById("wrong-block").classList.toggle("hidden", state.wrong.length === 0);
@@ -278,17 +287,53 @@ function showValidationErrors(problems) {
   }
 }
 
-function buildCategoryButtons() {
-  const box = document.getElementById("category-buttons");
+const MODES = [
+  { key: "practice", name: "연습",   desc: "시간 제한도 힌트도 없다. 틀린 문제를 다시 풀 수 있다." },
+  { key: "speed",    name: "스피드", desc: "문항마다 15초. 넘기면 오답이다." },
+  { key: "hint",     name: "힌트",   desc: "문항마다 힌트 한 번. 쓰고 맞히면 0.5점." },
+];
+
+// 시작 화면에서 고르는 중인 값. 라운드 상태와는 별개다.
+const selection = { mode: null, category: null };
+
+function pickerButtons(boxId, entries, onPick, selectedKey) {
+  const box = document.getElementById(boxId);
   box.textContent = "";
 
-  for (const key of CATEGORY_KEYS) {
+  for (const { key, name } of entries) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = QUESTIONS[key].name;
-    button.addEventListener("click", () => startRound(key, "practice"));
+    button.textContent = name;
+    button.classList.toggle("selected", key === selectedKey);
+    button.addEventListener("click", () => onPick(key));
     box.append(button);
   }
+}
+
+function renderStart() {
+  pickerButtons("mode-buttons", MODES, (key) => {
+    selection.mode = key;
+    renderStart();
+  }, selection.mode);
+
+  pickerButtons(
+    "category-buttons",
+    CATEGORY_KEYS.map((key) => ({ key, name: QUESTIONS[key].name })),
+    (key) => { selection.category = key; renderStart(); },
+    selection.category
+  );
+
+  const mode = MODES.find((m) => m.key === selection.mode);
+  document.getElementById("mode-desc").textContent = mode ? mode.desc : "";
+
+  // 순위표에 기록되지 않는 모드를 고른 동안에만 알린다.
+  document.getElementById("mode-notice").classList.toggle(
+    "hidden",
+    selection.mode === null || recordsToLeaderboard(selection.mode)
+  );
+
+  document.getElementById("start").disabled =
+    selection.mode === null || selection.category === null;
 }
 
 function onKeyDown(e) {
@@ -312,7 +357,9 @@ function init() {
     return;
   }
 
-  buildCategoryButtons();
+  document.getElementById("start").addEventListener("click", () => {
+    startRound(selection.category, selection.mode);
+  });
   document.getElementById("next").addEventListener("click", nextQuestion);
   document.getElementById("restart").addEventListener("click", restart);
   document.addEventListener("keydown", onKeyDown);

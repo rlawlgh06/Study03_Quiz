@@ -229,6 +229,17 @@ test("해설 전에는 다음으로 넘어가지 않는다", () => {
   assertEqual(state.index, 0);
 });
 
+// ── Task 2.1: 모드 ──────────────────────────────────────
+test("연습 모드는 순위표에 기록하지 않는다", () => {
+  assertEqual(recordsToLeaderboard("practice"), false);
+});
+test("스피드 모드는 순위표에 기록한다", () => {
+  assertEqual(recordsToLeaderboard("speed"), true);
+});
+test("힌트 모드는 순위표에 기록한다", () => {
+  assertEqual(recordsToLeaderboard("hint"), true);
+});
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

@@ -111,3 +111,12 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 #wrong-list li { margin-bottom: 0.4rem; }
 .hint-keys { margin-top: 2rem; }
+
+button.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  font-weight: 600;
+}
+
+.start-row { margin-top: 1.5rem; }
+#mode-desc { min-height: 1.6em; margin: 0.4rem 0 0; }

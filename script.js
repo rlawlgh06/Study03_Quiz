@@ -90,6 +90,18 @@ function pickHintRemovals(choicesLength, answerIndex, rng = Math.random) {
   return shuffle(candidates, rng).slice(0, 2);
 }
 
+const LOW_TIME_SEC = 5;
+
+/** 화면에 띄울 남은 시간 문구. 올림이라 답할 수 있는 동안 0초로 보이지 않는다. */
+function timerText(ms) {
+  return `남은 시간 ${Math.ceil(ms / 1000)}초`;
+}
+
+/** 표시가 5초가 되는 순간부터 촉박하다고 본다. */
+function isTimeLow(ms) {
+  return Math.ceil(ms / 1000) <= LOW_TIME_SEC;
+}
+
 /** 연습 모드는 순위표에 남기지 않는다. */
 function recordsToLeaderboard(mode) {
   return mode === "speed" || mode === "hint";
@@ -145,6 +157,7 @@ const state = {
   removed: [],
   wrong: [],
   finished: false,
+  timedOut: false, // 이번 문항을 시간 초과로 넘겼는가
   isRetry: false,
   baseScore: null, // 재도전 전 원래 판의 점수. 재도전이 이 값을 바꾸지 않는다.
   baseTotal: null, // 원래 판의 문항 수. 결과 화면이 "원래 판 점수 n / m" 을 쓴다.
@@ -173,7 +186,8 @@ function startRetry() {
   state.round = {
     category: state.round.category,
     name: state.round.name,
-    items: state.wrong,
+    // 시간 초과 표시는 그 판의 사실이다. 다시 푸는 판으로 끌고 오지 않는다.
+    items: state.wrong.map((item) => ({ ...item, timedOut: false })),
   };
   state.index = 0;
   state.score = 0;
@@ -181,6 +195,7 @@ function startRetry() {
   state.hintUsed = false;
   state.picked = null;
   state.removed = [];
+  state.timedOut = false;
   state.wrong = [];
   state.finished = false;
   state.isRetry = true;
@@ -236,7 +251,9 @@ function stopTimer() {
 function updateTimerDisplay() {
   const el = document.getElementById("timer");
   if (!el) return; // tests.html
-  el.textContent = `${Math.ceil(remainingMs(state.deadline, Date.now()) / 1000)}초`;
+  const left = remainingMs(state.deadline, Date.now());
+  el.textContent = timerText(left);
+  el.classList.toggle("low", isTimeLow(left));
 }
 
 /** 시간이 다 됐다. 오답으로 처리하되 정답이 무엇이었는지는 보여 준다. */
@@ -244,10 +261,14 @@ function timeUp() {
   if (!state.round || state.answered || state.finished) return;
   stopTimer();
 
+  const item = currentItem();
+  item.timedOut = true; // 결과 목록에서 "골라서 틀림" 과 구분한다
+
   state.picked = null;
   state.answered = true;
+  state.timedOut = true;
   state.score += scoreAnswer(false, state.hintUsed);
-  state.wrong.push(currentItem());
+  state.wrong.push(item);
 
   render();
 }
@@ -262,6 +283,7 @@ function startRound(categoryKey, mode, rng = Math.random) {
   state.hintUsed = false;
   state.picked = null;
   state.removed = [];
+  state.timedOut = false;
   state.wrong = [];
   state.finished = false;
   state.isRetry = false;
@@ -297,6 +319,7 @@ function nextQuestion() {
     state.hintUsed = false;
     state.picked = null;
     state.removed = [];
+    state.timedOut = false;
     beginQuestion(); // 다시 15초부터
   }
   render();
@@ -307,6 +330,12 @@ function restart() {
   state.round = null;
   selection.category = null;
   render();
+}
+
+/** 같은 카테고리·모드로 한 판 더. 재도전 상태는 남기지 않는다. */
+function playAgain() {
+  if (!state.round) return;
+  startRound(state.round.category, state.mode);
 }
 
 /** 카테고리를 고르면 모드 선택 화면으로 넘어간다. */
@@ -412,7 +441,8 @@ function renderQuestion() {
 
   if (state.answered) {
     const ok = state.picked === item.answer;
-    document.getElementById("verdict").textContent = ok ? "✓ 정답" : "✗ 오답";
+    document.getElementById("verdict").textContent =
+      state.timedOut ? "⏱ 시간 초과" : ok ? "✓ 정답" : "✗ 오답";
     document.getElementById("explanation-text").textContent = item.explanation;
     document.getElementById("source").textContent = `출처: ${item.source}`;
     document.getElementById("next").focus();
@@ -449,6 +479,13 @@ function renderResult() {
   for (const item of state.wrong) {
     const li = document.createElement("li");
     li.textContent = `${item.q} — 정답: ${item.choices[item.answer]}`;
+
+    if (item.timedOut) {
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = "시간 초과";
+      li.append(" ", badge);
+    }
     list.append(li);
   }
 }
@@ -550,6 +587,7 @@ function init() {
   document.getElementById("back").addEventListener("click", goBack);
   document.getElementById("hint").addEventListener("click", useHint);
   document.getElementById("next").addEventListener("click", nextQuestion);
+  document.getElementById("again").addEventListener("click", playAgain);
   document.getElementById("retry").addEventListener("click", startRetry);
   document.getElementById("restart").addEventListener("click", restart);
   document.addEventListener("keydown", onKeyDown);

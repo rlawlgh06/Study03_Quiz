@@ -505,6 +505,99 @@ test("모드마다 규칙이 한 줄씩 있다", () => {
   MODES.forEach((m) => assertEqual(typeof m.desc === "string" && m.desc.length > 0, true, m.key));
 });
 
+// ── 타이머 표시와 시간 초과 ─────────────────────────────
+test("타이머에 '남은 시간' 라벨이 붙는다", () => {
+  assertEqual(timerText(15000), "남은 시간 15초");
+});
+
+test("타이머 표시는 올림이다", () => {
+  assertEqual(timerText(9600), "남은 시간 10초");
+  assertEqual(timerText(400), "남은 시간 1초");
+  assertEqual(timerText(0), "남은 시간 0초");
+});
+
+test("표시가 5초가 되는 순간부터 촉박한 상태다", () => {
+  assertEqual(isTimeLow(5000), true, "딱 5초");
+  assertEqual(isTimeLow(4200), true);
+  assertEqual(isTimeLow(5001), false, "올림하면 6초라 아직 아니다");
+  assertEqual(isTimeLow(15000), false);
+});
+
+test("시간이 다 되면 timedOut 이 선다", () => {
+  startRound("science", "speed");
+  timeUp();
+  assertEqual(state.timedOut, true);
+  stopTimer();
+});
+
+test("답을 고르면 timedOut 이 서지 않는다", () => {
+  startRound("science", "speed");
+  selectChoice(state.round.items[0].answer);
+  assertEqual(state.timedOut, false);
+  stopTimer();
+});
+
+test("다음 문항으로 가면 timedOut 이 내려간다", () => {
+  startRound("science", "speed");
+  timeUp();
+  nextQuestion();
+  assertEqual(state.timedOut, false);
+  stopTimer();
+});
+
+test("시간 초과로 틀린 문항은 결과 목록에서 구분된다", () => {
+  startRound("science", "speed");
+  timeUp();
+  assertEqual(state.wrong[0].timedOut, true);
+  stopTimer();
+});
+
+test("골라서 틀린 문항은 시간 초과로 표시되지 않는다", () => {
+  startRound("science", "speed");
+  selectChoice((state.round.items[0].answer + 1) % 4);
+  assertEqual(!!state.wrong[0].timedOut, false);
+  stopTimer();
+});
+
+// ── 같은 모드 다시 ──────────────────────────────────────
+test("같은 모드 다시는 같은 카테고리·모드로 새 판을 연다", () => {
+  startRound("arts_culture", "hint");
+  while (!state.finished) {
+    selectChoice(state.round.items[state.index].answer);
+    nextQuestion();
+  }
+  playAgain();
+  assertEqual(state.round.category, "arts_culture");
+  assertEqual(state.mode, "hint");
+  assertEqual(state.finished, false);
+  assertEqual(state.score, 0);
+  assertEqual(currentScreen(), "quiz");
+});
+
+test("같은 모드 다시는 재도전 상태를 남기지 않는다", () => {
+  첫문항만틀리고끝내기("korean_history", "practice");
+  startRetry();
+  while (!state.finished) {
+    selectChoice(state.round.items[state.index].answer);
+    nextQuestion();
+  }
+  playAgain();
+  assertEqual(state.isRetry, false);
+  assertEqual(state.baseScore, null);
+});
+
+test("재도전 라운드는 시간 초과 표시를 물려받지 않는다", () => {
+  startRound("science", "speed");
+  timeUp();
+  nextQuestion();
+  while (!state.finished) { timeUp(); nextQuestion(); }
+  stopTimer();
+  // 연습으로 바꿔 끌고 와도 표시가 남으면 안 된다
+  state.mode = "practice";
+  startRetry();
+  assertEqual(state.round.items.every((it) => !it.timedOut), true);
+});
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

@@ -21,9 +21,18 @@
     </div>
 
     <div id="start-body">
-      <p id="mode-notice" class="notice">순위표에 기록되지 않음</p>
+      <h2>모드</h2>
+      <div id="mode-buttons" class="buttons"></div>
+      <p id="mode-desc" class="muted"></p>
+
       <h2>카테고리</h2>
       <div id="category-buttons" class="buttons"></div>
+
+      <p id="mode-notice" class="notice hidden">순위표에 기록되지 않음</p>
+
+      <div class="buttons start-row">
+        <button id="start" type="button" disabled>시작</button>
+      </div>
     </div>
   </section>
 
@@ -31,11 +40,16 @@
   <section id="screen-quiz" class="hidden">
     <header class="bar">
       <span id="progress"></span>
+      <span id="timer" class="hidden"></span>
       <span id="score"></span>
     </header>
 
     <h2 id="question"></h2>
     <ol id="choices" class="choices"></ol>
+
+    <div id="hint-row" class="hidden buttons">
+      <button id="hint" type="button">힌트 — 오답 2개 지우기 (0.5점)</button>
+    </div>
 
     <div id="explanation" class="hidden">
       <p id="verdict"></p>

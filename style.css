@@ -111,3 +111,22 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 #wrong-list li { margin-bottom: 0.4rem; }
 .hint-keys { margin-top: 2rem; }
+
+button.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  font-weight: 600;
+}
+
+.start-row { margin-top: 1.5rem; }
+#mode-desc { min-height: 1.6em; margin: 0.4rem 0 0; }
+
+/* 힌트로 지운 보기: 자리는 그대로 두고 흐리게. 없애면 아래 보기가 올라와
+   누르려던 위치가 바뀐다. */
+.choice.removed {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+
+#hint-row { margin: 1rem 0; }
+#timer { font-variant-numeric: tabular-nums; }

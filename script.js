@@ -68,6 +68,33 @@ function scoreAnswer(isCorrect, hintUsed) {
   return hintUsed ? 0.5 : 1;
 }
 
+const SPEED_LIMIT_MS = 15000;
+
+/**
+ * 남은 시간. 틱을 세지 않고 deadline 과 현재 시각의 차로 구하므로, 탭이
+ * 멈춰 있다 돌아와도 어긋나지 않는다. 음수는 0으로 바닥을 친다.
+ */
+function remainingMs(deadline, now) {
+  return Math.max(0, deadline - now);
+}
+
+/**
+ * 힌트로 지울 오답 보기 2개를 고른다. 정답은 후보에서 빠지므로 정답 1개와
+ * 오답 1개가 남는다.
+ */
+function pickHintRemovals(choicesLength, answerIndex, rng = Math.random) {
+  const candidates = [];
+  for (let i = 0; i < choicesLength; i++) {
+    if (i !== answerIndex) candidates.push(i);
+  }
+  return shuffle(candidates, rng).slice(0, 2);
+}
+
+/** 연습 모드는 순위표에 남기지 않는다. */
+function recordsToLeaderboard(mode) {
+  return mode === "speed" || mode === "hint";
+}
+
 /** Fisher-Yates. 원본을 건드리지 않고 섞은 복사본을 돌려준다. */
 function shuffle(array, rng = Math.random) {
   const out = array.slice();
@@ -115,15 +142,79 @@ const state = {
   answered: false,
   hintUsed: false,
   picked: null,
+  removed: [],
   wrong: [],
   finished: false,
+  deadline: 0,
+  timerId: null,
 };
+
+/**
+ * 힌트로 지워진 보기인가. 해설이 뜨면 전부 되살린다 — 지운 채로 두면
+ * 그 보기가 왜 틀렸는지 확인할 수 없다.
+ */
+function isChoiceRemoved(i) {
+  return !state.answered && state.removed.includes(i);
+}
+
+function useHint() {
+  if (!state.round || state.mode !== "hint") return;
+  if (state.answered || state.finished || state.hintUsed) return;
+
+  const item = currentItem();
+  state.removed = pickHintRemovals(item.choices.length, item.answer);
+  state.hintUsed = true;
+  render();
+}
 
 function currentItem() {
   return state.round.items[state.index];
 }
 
+/** 스피드 모드에서만 시계를 건다. 문항이 바뀔 때마다 부른다. */
+function beginQuestion() {
+  if (state.mode === "speed" && !state.finished) startTimer();
+}
+
+function startTimer() {
+  stopTimer();
+  state.deadline = Date.now() + SPEED_LIMIT_MS;
+  updateTimerDisplay();
+
+  state.timerId = setInterval(() => {
+    updateTimerDisplay();
+    if (remainingMs(state.deadline, Date.now()) === 0) timeUp();
+  }, 100);
+}
+
+function stopTimer() {
+  if (state.timerId !== null) {
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById("timer");
+  if (!el) return; // tests.html
+  el.textContent = `${Math.ceil(remainingMs(state.deadline, Date.now()) / 1000)}초`;
+}
+
+/** 시간이 다 됐다. 오답으로 처리하되 정답이 무엇이었는지는 보여 준다. */
+function timeUp() {
+  if (!state.round || state.answered || state.finished) return;
+  stopTimer();
+
+  state.picked = null;
+  state.answered = true;
+  state.score += scoreAnswer(false, state.hintUsed);
+  state.wrong.push(currentItem());
+
+  render();
+}
+
 function startRound(categoryKey, mode, rng = Math.random) {
+  stopTimer();
   state.mode = mode;
   state.round = buildRound(categoryKey, QUESTIONS, rng);
   state.index = 0;
@@ -131,13 +222,16 @@ function startRound(categoryKey, mode, rng = Math.random) {
   state.answered = false;
   state.hintUsed = false;
   state.picked = null;
+  state.removed = [];
   state.wrong = [];
   state.finished = false;
+  beginQuestion();
   render();
 }
 
 function selectChoice(i) {
   if (!state.round || state.answered || state.finished) return; // 이중 채점 방지
+  stopTimer(); // 해설이 뜨는 동안 시계는 멈춘다
   const item = currentItem();
   const isCorrect = i === item.answer;
 
@@ -154,16 +248,20 @@ function nextQuestion() {
 
   if (state.index + 1 >= state.round.items.length) {
     state.finished = true;
+    stopTimer();
   } else {
     state.index++;
     state.answered = false;
     state.hintUsed = false;
     state.picked = null;
+    state.removed = [];
+    beginQuestion(); // 다시 15초부터
   }
   render();
 }
 
 function restart() {
+  stopTimer();
   state.round = null;
   render();
 }
@@ -182,7 +280,7 @@ function showScreen(id) {
 function render() {
   if (!document.getElementById("quiz-root")) return;
 
-  if (!state.round) { showScreen("screen-start"); return; }
+  if (!state.round) { showScreen("screen-start"); renderStart(); return; }
   if (state.finished) { renderResult(); return; }
   renderQuestion();
 }
@@ -195,16 +293,23 @@ function renderQuestion() {
 
   document.getElementById("progress").textContent = `${state.index + 1} / ${total}`;
   document.getElementById("score").textContent = `${formatScore(state.score)} / ${total}`;
+
+  const timer = document.getElementById("timer");
+  timer.classList.toggle("hidden", state.mode !== "speed");
+  if (state.mode === "speed") updateTimerDisplay();
   document.getElementById("question").textContent = item.q;
 
   const list = document.getElementById("choices");
   list.textContent = "";
 
   item.choices.forEach((text, i) => {
+    const removed = isChoiceRemoved(i);
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "choice";
-    button.disabled = state.answered;
+    button.classList.toggle("removed", removed);
+    button.disabled = state.answered || removed;
 
     const num = document.createElement("span");
     num.className = "num";
@@ -235,6 +340,9 @@ function renderQuestion() {
     list.append(li);
   });
 
+  document.getElementById("hint-row").classList.toggle("hidden", state.mode !== "hint");
+  document.getElementById("hint").disabled = state.hintUsed || state.answered;
+
   const box = document.getElementById("explanation");
   box.classList.toggle("hidden", !state.answered);
 
@@ -253,6 +361,10 @@ function renderResult() {
   const total = state.round.items.length;
   document.getElementById("final-score").textContent =
     `${formatScore(state.score)} / ${total}`;
+
+  document.getElementById("result-notice").classList.toggle(
+    "hidden", recordsToLeaderboard(state.mode)
+  );
 
   const list = document.getElementById("wrong-list");
   list.textContent = "";
@@ -278,17 +390,53 @@ function showValidationErrors(problems) {
   }
 }
 
-function buildCategoryButtons() {
-  const box = document.getElementById("category-buttons");
+const MODES = [
+  { key: "practice", name: "연습",   desc: "시간 제한도 힌트도 없다. 틀린 문제를 다시 풀 수 있다." },
+  { key: "speed",    name: "스피드", desc: "문항마다 15초. 넘기면 오답이다." },
+  { key: "hint",     name: "힌트",   desc: "문항마다 힌트 한 번. 쓰고 맞히면 0.5점." },
+];
+
+// 시작 화면에서 고르는 중인 값. 라운드 상태와는 별개다.
+const selection = { mode: null, category: null };
+
+function pickerButtons(boxId, entries, onPick, selectedKey) {
+  const box = document.getElementById(boxId);
   box.textContent = "";
 
-  for (const key of CATEGORY_KEYS) {
+  for (const { key, name } of entries) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = QUESTIONS[key].name;
-    button.addEventListener("click", () => startRound(key, "practice"));
+    button.textContent = name;
+    button.classList.toggle("selected", key === selectedKey);
+    button.addEventListener("click", () => onPick(key));
     box.append(button);
   }
+}
+
+function renderStart() {
+  pickerButtons("mode-buttons", MODES, (key) => {
+    selection.mode = key;
+    renderStart();
+  }, selection.mode);
+
+  pickerButtons(
+    "category-buttons",
+    CATEGORY_KEYS.map((key) => ({ key, name: QUESTIONS[key].name })),
+    (key) => { selection.category = key; renderStart(); },
+    selection.category
+  );
+
+  const mode = MODES.find((m) => m.key === selection.mode);
+  document.getElementById("mode-desc").textContent = mode ? mode.desc : "";
+
+  // 순위표에 기록되지 않는 모드를 고른 동안에만 알린다.
+  document.getElementById("mode-notice").classList.toggle(
+    "hidden",
+    selection.mode === null || recordsToLeaderboard(selection.mode)
+  );
+
+  document.getElementById("start").disabled =
+    selection.mode === null || selection.category === null;
 }
 
 function onKeyDown(e) {
@@ -312,7 +460,10 @@ function init() {
     return;
   }
 
-  buildCategoryButtons();
+  document.getElementById("start").addEventListener("click", () => {
+    startRound(selection.category, selection.mode);
+  });
+  document.getElementById("hint").addEventListener("click", useHint);
   document.getElementById("next").addEventListener("click", nextQuestion);
   document.getElementById("restart").addEventListener("click", restart);
   document.addEventListener("keydown", onKeyDown);

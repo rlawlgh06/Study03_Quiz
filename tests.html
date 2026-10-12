@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>퀴즈 테스트</title>
+<style>
+  body { font: 15px/1.6 system-ui, sans-serif; margin: 2rem; }
+  #summary { font-size: 1.3rem; }
+  #summary.green { color: #0a7d2b; }
+  #summary.red { color: #c0271a; }
+  ul { list-style: none; padding: 0; }
+  li { padding: 2px 0; font-family: ui-monospace, monospace; font-size: 13px; }
+  li.fail { color: #c0271a; }
+</style>
+</head>
+<body>
+
+<h1 id="summary">실행 중…</h1>
+<ul id="results"></ul>
+
+<!-- #quiz-root 를 두지 않는다. script.js 는 그것이 있을 때만 초기화한다. -->
+<script src="questions.js"></script>
+<script src="script.js"></script>
+
+<script>
+// ── 러너 ────────────────────────────────────────────────
+let 통과 = 0, 실패 = 0;
+
+function test(name, fn) {
+  try {
+    fn();
+    통과++;
+    기록("✓ " + name, "pass");
+  } catch (e) {
+    실패++;
+    기록("✗ " + name + " — " + e.message, "fail");
+  }
+}
+
+function assertEqual(actual, expected, msg) {
+  if (actual !== expected) {
+    throw new Error((msg ? msg + ": " : "") +
+      `기대 ${JSON.stringify(expected)}, 실제 ${JSON.stringify(actual)}`);
+  }
+}
+
+function assertDeepEqual(actual, expected, msg) {
+  const a = JSON.stringify(actual), b = JSON.stringify(expected);
+  if (a !== b) {
+    throw new Error((msg ? msg + ": " : "") + `기대 ${b}, 실제 ${a}`);
+  }
+}
+
+function 기록(text, cls) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  li.className = cls;
+  document.getElementById("results").appendChild(li);
+}
+
+// ── 공통 조각 ───────────────────────────────────────────
+function 정상문항(덮어쓰기) {
+  return Object.assign({
+    q: "질문입니다", choices: ["가", "나", "다", "라"], answer: 0,
+    explanation: "해설입니다", source: "출처입니다",
+  }, 덮어쓰기 || {});
+}
+
+function 집합(items) {
+  return {
+    korean_history:  { name: "한국사",      items: items.slice() },
+    world_geography: { name: "세계지리",    items: items.slice() },
+    science:         { name: "과학",        items: items.slice() },
+    arts_culture:    { name: "예술과 문화", items: items.slice() },
+  };
+}
+
+function 문제있음(questions) {
+  return validateQuestions(questions, false).length > 0;
+}
+
+// ── Task 1.1: 문항 검사 ─────────────────────────────────
+test("정상 데이터는 문제가 없다", () => {
+  assertDeepEqual(validateQuestions(QUESTIONS, false), []);
+});
+
+test("카테고리 키가 다르면 잡아낸다", () => {
+  assertEqual(validateQuestions({ wrong_key: { name: "x", items: [] } }, false).length > 0, true);
+});
+
+test("보기가 4개가 아니면 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ choices: ["가", "나", "다"] })])), true);
+});
+
+test("보기에 중복이 있으면 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ choices: ["가", "가", "다", "라"] })])), true);
+});
+
+test("보기가 비어 있으면 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ choices: ["가", "", "다", "라"] })])), true);
+});
+
+test("answer 가 범위를 벗어나면 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ answer: 4 })])), true);
+});
+
+test("질문이 비어 있으면 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ q: "" })])), true);
+});
+
+test("해설이 비어 있으면 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ explanation: "" })])), true);
+});
+
+test("출처가 비어 있으면 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ source: "" })])), true);
+});
+
+test("해설에 보기 번호가 있으면 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ explanation: "1번이 정답이다" })])), true);
+});
+
+test("해설에 원문자 보기 번호가 있어도 잡아낸다", () => {
+  assertEqual(문제있음(집합([정상문항({ explanation: "②가 정답이다" })])), true);
+});
+
+test("정상 문항만 있으면 통과한다", () => {
+  assertDeepEqual(validateQuestions(집합([정상문항()]), false), []);
+});
+
+test("requireTen 이 true 면 10개가 아닌 카테고리를 잡아낸다", () => {
+  assertEqual(validateQuestions(QUESTIONS, true).length > 0, true);
+});
+
+// ── 요약 ────────────────────────────────────────────────
+const s = document.getElementById("summary");
+s.textContent = `통과 ${통과} / 실패 ${실패}`;
+s.className = 실패 === 0 ? "green" : "red";
+</script>
+
+</body>
+</html>

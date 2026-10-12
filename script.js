@@ -145,9 +145,48 @@ const state = {
   removed: [],
   wrong: [],
   finished: false,
+  isRetry: false,
+  baseScore: null, // 재도전 전 원래 판의 점수. 재도전이 이 값을 바꾸지 않는다.
+  baseTotal: null, // 원래 판의 문항 수. 결과 화면이 "원래 판 점수 n / m" 을 쓴다.
   deadline: 0,
   timerId: null,
 };
+
+/**
+ * 재도전은 연습 모드 전용이다. 스피드·힌트에서 허용하면 순위표에 올라간
+ * 점수를 사후에 고칠 수 있게 되어 기록이 의미를 잃는다.
+ */
+function canRetry() {
+  return state.finished && state.mode === "practice" && state.wrong.length > 0;
+}
+
+/** 틀린 문항만 모아 다시 한 판. 원래 판의 점수는 baseScore 에 남긴다. */
+function startRetry() {
+  if (!canRetry()) return;
+
+  // 거듭 재도전해도 baseScore 는 맨 처음 판의 점수를 가리킨다.
+  if (!state.isRetry) {
+    state.baseScore = state.score;
+    state.baseTotal = state.round.items.length;
+  }
+
+  state.round = {
+    category: state.round.category,
+    name: state.round.name,
+    items: state.wrong,
+  };
+  state.index = 0;
+  state.score = 0;
+  state.answered = false;
+  state.hintUsed = false;
+  state.picked = null;
+  state.removed = [];
+  state.wrong = [];
+  state.finished = false;
+  state.isRetry = true;
+
+  render();
+}
 
 /**
  * 힌트로 지워진 보기인가. 해설이 뜨면 전부 되살린다 — 지운 채로 두면
@@ -225,6 +264,9 @@ function startRound(categoryKey, mode, rng = Math.random) {
   state.removed = [];
   state.wrong = [];
   state.finished = false;
+  state.isRetry = false;
+  state.baseScore = null;
+  state.baseTotal = null;
   beginQuestion();
   render();
 }
@@ -359,8 +401,20 @@ function renderResult() {
   showScreen("screen-result");
 
   const total = state.round.items.length;
-  document.getElementById("final-score").textContent =
-    `${formatScore(state.score)} / ${total}`;
+  const correct = total - state.wrong.length;
+
+  // 재도전은 "몇 개 중 몇 개" 로 보여 준다. 원래 판의 점수는 건드리지 않는다.
+  document.getElementById("final-score").textContent = state.isRetry
+    ? `${total}문제 중 ${correct}개 정답`
+    : `${formatScore(state.score)} / ${total}`;
+
+  const base = document.getElementById("base-score");
+  base.classList.toggle("hidden", !state.isRetry);
+  if (state.isRetry) {
+    base.textContent = `원래 판 점수 ${formatScore(state.baseScore)} / ${state.baseTotal} (바뀌지 않습니다)`;
+  }
+
+  document.getElementById("retry").classList.toggle("hidden", !canRetry());
 
   document.getElementById("result-notice").classList.toggle(
     "hidden", recordsToLeaderboard(state.mode)
@@ -465,6 +519,7 @@ function init() {
   });
   document.getElementById("hint").addEventListener("click", useHint);
   document.getElementById("next").addEventListener("click", nextQuestion);
+  document.getElementById("retry").addEventListener("click", startRetry);
   document.getElementById("restart").addEventListener("click", restart);
   document.addEventListener("keydown", onKeyDown);
   render();

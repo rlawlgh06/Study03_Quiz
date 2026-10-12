@@ -166,3 +166,14 @@ button:disabled { opacity: 0.45; cursor: default; }
   border-color: var(--muted);
   color: var(--muted);
 }
+
+/* 학번·이름. 화면이 바뀌어도 맨 위에 남는다. */
+#student {
+  display: flex;
+  gap: 1.1rem;
+  padding-bottom: 0.7rem;
+  margin-bottom: 1.6rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+}

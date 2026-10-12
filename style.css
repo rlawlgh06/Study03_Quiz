@@ -112,14 +112,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 #wrong-list li { margin-bottom: 0.4rem; }
 .hint-keys { margin-top: 2rem; }
 
-button.selected {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-  font-weight: 600;
-}
-
 .start-row { margin-top: 1.5rem; }
-#mode-desc { min-height: 1.6em; margin: 0.4rem 0 0; }
+
 
 /* 힌트로 지운 보기: 자리는 그대로 두고 흐리게. 없애면 아래 보기가 올라와
    누르려던 위치가 바뀐다. */
@@ -130,3 +124,22 @@ button.selected {
 
 #hint-row { margin: 1rem 0; }
 #timer { font-variant-numeric: tabular-nums; }
+
+/* 모드 선택 화면 — 모드마다 규칙을 한 줄씩 단 카드 */
+.mode-list { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.9rem 1.1rem;
+}
+
+.mode-card .mode-name { font-weight: 600; font-size: 1.05rem; }
+.mode-card .mode-desc { color: var(--muted); font-size: 0.9rem; }
+.mode-card .notice { margin-top: 0.35rem; }
+
+#mode-title { margin-bottom: 1.2rem; }

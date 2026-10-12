@@ -132,7 +132,7 @@ function buildRound(categoryKey, questions, rng = Math.random) {
 // 화면 없이 startRound/selectChoice 로 상태만 검사할 수 있다.
 // ─────────────────────────────────────────────────────────
 
-const SCREENS = ["screen-start", "screen-quiz", "screen-result"];
+const SCREENS = ["screen-start", "screen-mode", "screen-quiz", "screen-result"];
 
 const state = {
   mode: "practice",
@@ -305,7 +305,26 @@ function nextQuestion() {
 function restart() {
   stopTimer();
   state.round = null;
+  selection.category = null;
   render();
+}
+
+/** 카테고리를 고르면 모드 선택 화면으로 넘어간다. */
+function chooseCategory(key) {
+  selection.category = key;
+  render();
+}
+
+/** 모드 선택 화면에서 카테고리 선택 화면으로 돌아간다. */
+function goBack() {
+  selection.category = null;
+  render();
+}
+
+/** 지금 보여야 할 화면. DOM 없이도 흐름을 검사할 수 있게 상태에서만 정한다. */
+function currentScreen() {
+  if (state.round) return state.finished ? "result" : "quiz";
+  return selection.category ? "mode" : "start";
 }
 
 /** 8.5 는 그대로, 8 은 "8" 로. */
@@ -322,9 +341,12 @@ function showScreen(id) {
 function render() {
   if (!document.getElementById("quiz-root")) return;
 
-  if (!state.round) { showScreen("screen-start"); renderStart(); return; }
-  if (state.finished) { renderResult(); return; }
-  renderQuestion();
+  switch (currentScreen()) {
+    case "start":  showScreen("screen-start"); renderStartScreen(); return;
+    case "mode":   showScreen("screen-mode");  renderModeScreen();  return;
+    case "result": renderResult(); return;
+    default:       renderQuestion();
+  }
 }
 
 function renderQuestion() {
@@ -445,52 +467,64 @@ function showValidationErrors(problems) {
 }
 
 const MODES = [
-  { key: "practice", name: "연습",   desc: "시간 제한도 힌트도 없다. 틀린 문제를 다시 풀 수 있다." },
-  { key: "speed",    name: "스피드", desc: "문항마다 15초. 넘기면 오답이다." },
-  { key: "hint",     name: "힌트",   desc: "문항마다 힌트 한 번. 쓰고 맞히면 0.5점." },
+  {
+    key: "practice", name: "연습",
+    desc: "시간 제한도 힌트도 없습니다. 틀린 문제를 다시 풀 수 있습니다.",
+    notice: "순위표에 기록되지 않음",
+  },
+  { key: "speed", name: "스피드", desc: "문항마다 15초. 넘기면 오답입니다." },
+  { key: "hint",  name: "힌트",   desc: "문항마다 힌트 한 번. 쓰고 맞히면 0.5점입니다." },
 ];
 
-// 시작 화면에서 고르는 중인 값. 라운드 상태와는 별개다.
-const selection = { mode: null, category: null };
+// 고르는 중인 카테고리. 라운드 상태와는 별개다.
+const selection = { category: null };
 
-function pickerButtons(boxId, entries, onPick, selectedKey) {
-  const box = document.getElementById(boxId);
+function renderStartScreen() {
+  const box = document.getElementById("category-buttons");
   box.textContent = "";
 
-  for (const { key, name } of entries) {
+  for (const key of CATEGORY_KEYS) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = name;
-    button.classList.toggle("selected", key === selectedKey);
-    button.addEventListener("click", () => onPick(key));
+    button.textContent = QUESTIONS[key].name;
+    button.addEventListener("click", () => chooseCategory(key));
     box.append(button);
   }
 }
 
-function renderStart() {
-  pickerButtons("mode-buttons", MODES, (key) => {
-    selection.mode = key;
-    renderStart();
-  }, selection.mode);
+function renderModeScreen() {
+  document.getElementById("mode-title").textContent =
+    `${QUESTIONS[selection.category].name} · 모드를 고르세요`;
 
-  pickerButtons(
-    "category-buttons",
-    CATEGORY_KEYS.map((key) => ({ key, name: QUESTIONS[key].name })),
-    (key) => { selection.category = key; renderStart(); },
-    selection.category
-  );
+  const box = document.getElementById("mode-buttons");
+  box.textContent = "";
 
-  const mode = MODES.find((m) => m.key === selection.mode);
-  document.getElementById("mode-desc").textContent = mode ? mode.desc : "";
+  // 모드마다 규칙을 한 줄씩 붙인다. 순위표 안내는 연습에만 있다.
+  for (const mode of MODES) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mode-card";
 
-  // 순위표에 기록되지 않는 모드를 고른 동안에만 알린다.
-  document.getElementById("mode-notice").classList.toggle(
-    "hidden",
-    selection.mode === null || recordsToLeaderboard(selection.mode)
-  );
+    const name = document.createElement("span");
+    name.className = "mode-name";
+    name.textContent = mode.name;
 
-  document.getElementById("start").disabled =
-    selection.mode === null || selection.category === null;
+    const desc = document.createElement("span");
+    desc.className = "mode-desc";
+    desc.textContent = mode.desc;
+
+    button.append(name, desc);
+
+    if (mode.notice) {
+      const notice = document.createElement("span");
+      notice.className = "notice";
+      notice.textContent = mode.notice;
+      button.append(notice);
+    }
+
+    button.addEventListener("click", () => startRound(selection.category, mode.key));
+    box.append(button);
+  }
 }
 
 function onKeyDown(e) {
@@ -513,9 +547,7 @@ function init() {
     return;
   }
 
-  document.getElementById("start").addEventListener("click", () => {
-    startRound(selection.category, selection.mode);
-  });
+  document.getElementById("back").addEventListener("click", goBack);
   document.getElementById("hint").addEventListener("click", useHint);
   document.getElementById("next").addEventListener("click", nextQuestion);
   document.getElementById("retry").addEventListener("click", startRetry);

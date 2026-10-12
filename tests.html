@@ -448,6 +448,63 @@ test("새 판을 시작하면 재도전 상태가 초기화된다", () => {
   assertEqual(state.baseScore, null);
 });
 
+// ── 두 단계 선택 흐름 ───────────────────────────────────
+test("처음에는 카테고리 선택 화면이다", () => {
+  restart();
+  assertEqual(currentScreen(), "start");
+});
+
+test("카테고리를 고르면 모드 선택 화면으로 간다", () => {
+  restart();
+  chooseCategory("science");
+  assertEqual(currentScreen(), "mode");
+  assertEqual(selection.category, "science");
+});
+
+test("뒤로를 누르면 카테고리 선택 화면으로 돌아간다", () => {
+  restart();
+  chooseCategory("science");
+  goBack();
+  assertEqual(currentScreen(), "start");
+  assertEqual(selection.category, null);
+});
+
+test("모드를 고르면 바로 문제 화면이다", () => {
+  restart();
+  chooseCategory("science");
+  startRound(selection.category, "practice");
+  assertEqual(currentScreen(), "quiz");
+});
+
+test("라운드가 끝나면 결과 화면이다", () => {
+  restart();
+  chooseCategory("science");
+  startRound("science", "practice");
+  while (!state.finished) {
+    selectChoice(state.round.items[state.index].answer);
+    nextQuestion();
+  }
+  assertEqual(currentScreen(), "result");
+});
+
+test("처음으로를 누르면 카테고리까지 지우고 돌아간다", () => {
+  chooseCategory("science");
+  startRound("science", "practice");
+  restart();
+  assertEqual(currentScreen(), "start");
+  assertEqual(selection.category, null);
+});
+
+test("순위표 안내는 연습 모드에만 붙는다", () => {
+  const 붙은모드 = MODES.filter((m) => m.notice).map((m) => m.key);
+  assertDeepEqual(붙은모드, ["practice"]);
+});
+
+test("모드마다 규칙이 한 줄씩 있다", () => {
+  assertEqual(MODES.length, 3);
+  MODES.forEach((m) => assertEqual(typeof m.desc === "string" && m.desc.length > 0, true, m.key));
+});
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

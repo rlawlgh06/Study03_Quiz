@@ -598,6 +598,51 @@ test("재도전 라운드는 시간 초과 표시를 물려받지 않는다", ()
   assertEqual(state.round.items.every((it) => !it.timedOut), true);
 });
 
+// ── 힌트 버튼 문구와 결과 목록 ──────────────────────────
+test("힌트 버튼 문구는 쓰기 전과 쓴 뒤가 다르다", () => {
+  assertEqual(hintButtonText(false), "힌트 (오답 2개 지우기)");
+  assertEqual(hintButtonText(true), "힌트 사용함");
+});
+
+test("힌트를 쓰고 맞히면 되짚을 문항에 남는다", () => {
+  startRound("science", "hint");
+  const 문항 = state.round.items[0];
+  useHint();
+  selectChoice(문항.answer);
+  assertEqual(state.hintedCorrect.length, 1);
+  assertEqual(state.hintedCorrect[0].q, 문항.q);
+  assertEqual(state.wrong.length, 0, "맞혔으니 틀린 목록에는 없다");
+});
+
+test("힌트를 쓰지 않고 맞히면 남지 않는다", () => {
+  startRound("science", "hint");
+  selectChoice(state.round.items[0].answer);
+  assertEqual(state.hintedCorrect.length, 0);
+});
+
+test("힌트를 쓰고 틀리면 틀린 목록에만 남는다", () => {
+  startRound("science", "hint");
+  const 문항 = state.round.items[0];
+  useHint();
+  selectChoice((문항.answer + 1) % 4);
+  assertEqual(state.hintedCorrect.length, 0);
+  assertEqual(state.wrong.length, 1);
+});
+
+test("새 판을 시작하면 되짚을 문항이 비워진다", () => {
+  startRound("science", "hint");
+  useHint();
+  selectChoice(state.round.items[0].answer);
+  startRound("science", "hint");
+  assertEqual(state.hintedCorrect.length, 0);
+});
+
+test("재도전 라운드는 힌트 기록을 물려받지 않는다", () => {
+  첫문항만틀리고끝내기("korean_history", "practice");
+  startRetry();
+  assertEqual(state.hintedCorrect.length, 0);
+});
+
 // ── 요약 ────────────────────────────────────────────────
 const s = document.getElementById("summary");
 s.textContent = `통과 ${통과} / 실패 ${실패}`;

@@ -160,3 +160,9 @@ button:disabled { opacity: 0.45; cursor: default; }
   font-size: 0.75rem;
   white-space: nowrap;
 }
+
+/* 힌트를 써서 반만 받은 문항은 틀린 것과 색을 달리한다. */
+.badge.hinted {
+  border-color: var(--muted);
+  color: var(--muted);
+}

@@ -92,6 +92,11 @@ function pickHintRemovals(choicesLength, answerIndex, rng = Math.random) {
 
 const LOW_TIME_SEC = 5;
 
+/** 힌트 버튼에 띄울 문구. 쓰고 나면 왜 안 눌리는지 글자로 알린다. */
+function hintButtonText(hintUsed) {
+  return hintUsed ? "힌트 사용함" : "힌트 (오답 2개 지우기)";
+}
+
 /** 화면에 띄울 남은 시간 문구. 올림이라 답할 수 있는 동안 0초로 보이지 않는다. */
 function timerText(ms) {
   return `남은 시간 ${Math.ceil(ms / 1000)}초`;
@@ -158,6 +163,7 @@ const state = {
   wrong: [],
   finished: false,
   timedOut: false, // 이번 문항을 시간 초과로 넘겼는가
+  hintedCorrect: [], // 힌트를 쓰고 맞힌 문항. 결과에서 되짚을 거리다.
   isRetry: false,
   baseScore: null, // 재도전 전 원래 판의 점수. 재도전이 이 값을 바꾸지 않는다.
   baseTotal: null, // 원래 판의 문항 수. 결과 화면이 "원래 판 점수 n / m" 을 쓴다.
@@ -197,6 +203,7 @@ function startRetry() {
   state.removed = [];
   state.timedOut = false;
   state.wrong = [];
+  state.hintedCorrect = [];
   state.finished = false;
   state.isRetry = true;
 
@@ -285,6 +292,7 @@ function startRound(categoryKey, mode, rng = Math.random) {
   state.removed = [];
   state.timedOut = false;
   state.wrong = [];
+  state.hintedCorrect = [];
   state.finished = false;
   state.isRetry = false;
   state.baseScore = null;
@@ -302,7 +310,9 @@ function selectChoice(i) {
   state.picked = i;
   state.answered = true;
   state.score += scoreAnswer(isCorrect, state.hintUsed);
+
   if (!isCorrect) state.wrong.push(item);
+  else if (state.hintUsed) state.hintedCorrect.push(item);
 
   render();
 }
@@ -434,7 +444,9 @@ function renderQuestion() {
   });
 
   document.getElementById("hint-row").classList.toggle("hidden", state.mode !== "hint");
-  document.getElementById("hint").disabled = state.hintUsed || state.answered;
+  const hintButton = document.getElementById("hint");
+  hintButton.textContent = hintButtonText(state.hintUsed);
+  hintButton.disabled = state.hintUsed || state.answered;
 
   const box = document.getElementById("explanation");
   box.classList.toggle("hidden", !state.answered);
@@ -472,19 +484,29 @@ function renderResult() {
     "hidden", recordsToLeaderboard(state.mode)
   );
 
+  // 되짚을 거리: 틀린 문항과, 힌트를 써서 반만 받은 문항.
+  const review = [
+    ...state.wrong.map((item) => ({
+      item, badge: item.timedOut ? "시간 초과" : null, kind: "wrong",
+    })),
+    ...state.hintedCorrect.map((item) => ({
+      item, badge: "정답 (힌트 0.5점)", kind: "hinted",
+    })),
+  ];
+
   const list = document.getElementById("wrong-list");
   list.textContent = "";
-  document.getElementById("wrong-block").classList.toggle("hidden", state.wrong.length === 0);
+  document.getElementById("wrong-block").classList.toggle("hidden", review.length === 0);
 
-  for (const item of state.wrong) {
+  for (const { item, badge, kind } of review) {
     const li = document.createElement("li");
     li.textContent = `${item.q} — 정답: ${item.choices[item.answer]}`;
 
-    if (item.timedOut) {
-      const badge = document.createElement("span");
-      badge.className = "badge";
-      badge.textContent = "시간 초과";
-      li.append(" ", badge);
+    if (badge) {
+      const mark = document.createElement("span");
+      mark.className = kind === "hinted" ? "badge hinted" : "badge";
+      mark.textContent = badge;
+      li.append(" ", mark);
     }
     list.append(li);
   }
